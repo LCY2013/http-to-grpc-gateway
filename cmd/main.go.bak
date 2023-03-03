@@ -1,0 +1,50 @@
+package main
+
+//func main() {
+//	conn, err := grpc.DialContext(
+//		context.TODO(),
+//		":8080",
+//		grpc.WithTransportCredentials(insecure.NewCredentials()),
+//	)
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//
+//	stubReflect := rpb.NewServerReflectionClient(conn)
+//	client := grpcreflect.NewClientV1Alpha(context.Background(), stubReflect)
+//	services, err := client.ListServices()
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//	for idx, service := range services {
+//		if idx == 0 {
+//			continue
+//		}
+//		fmt.Println(service)
+//		resolveService, err := client.ResolveService(service)
+//		if err != nil {
+//			log.Fatal(err)
+//		}
+//
+//		methods := resolveService.GetMethods()
+//
+//		for _, method := range methods {
+//			methodDescriptor := resolveService.FindMethodByName(method.GetName())
+//
+//			stub := grpcdynamic.NewStub(conn)
+//
+//			rpcResp, err := stub.InvokeRpc(
+//				context.TODO(),
+//				methodDescriptor,
+//				&helloworld.HelloRequest{
+//					Name: "fufeng",
+//				},
+//			)
+//			if err != nil {
+//				log.Fatal(err)
+//			}
+//
+//			fmt.Println(rpcResp.String())
+//		}
+//	}
+//}
