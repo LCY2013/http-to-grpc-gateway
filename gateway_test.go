@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	grpcurl_testing "github.com/LCY2013/http-to-grpc-gateway/internal/testing"
+	jsonpbtest "github.com/LCY2013/http-to-grpc-gateway/internal/testing/jsonpb_test_proto"
 	"io"
 	"net"
 	"os"
@@ -25,8 +27,6 @@ import (
 	"google.golang.org/grpc/status"
 
 	. "github.com/fullstorydev/grpcurl"
-	grpcurl_testing "github.com/fullstorydev/grpcurl/internal/testing"
-	jsonpbtest "github.com/fullstorydev/grpcurl/internal/testing/jsonpb_test_proto"
 )
 
 var (

@@ -1,8 +1,9 @@
-package gateway_test
+package gateway
 
 import (
 	"context"
 	"fmt"
+	grpcurl_testing "github.com/LCY2013/http-to-grpc-gateway/internal/testing"
 	"net"
 	"strings"
 	"testing"
@@ -10,9 +11,6 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-
-	. "github.com/fullstorydev/grpcurl"
-	grpcurl_testing "github.com/fullstorydev/grpcurl/internal/testing"
 )
 
 func TestPlainText(t *testing.T) {

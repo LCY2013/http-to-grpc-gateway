@@ -1,4 +1,4 @@
-module http-to-grpc-gateway
+module github.com/LCY2013/http-to-grpc-gateway
 
 go 1.20
 
