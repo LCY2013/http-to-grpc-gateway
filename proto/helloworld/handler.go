@@ -6,7 +6,8 @@ type HelloworldService struct{}
 
 func (s HelloworldService) SayHello(ctx context.Context, request *HelloRequest) (*HelloReply, error) {
 	return &HelloReply{
-		Message: "hello, " + request.Name,
+		Message:    "hello, " + request.Name,
+		Parameters: request.Parameters,
 	}, nil
 }
 
