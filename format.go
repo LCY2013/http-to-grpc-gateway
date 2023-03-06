@@ -488,7 +488,7 @@ func (h *DefaultEventHandler) OnReceiveResponse(resp proto.Message) {
 	if respStr, err := h.Formatter(resp); err != nil {
 		fmt.Fprintf(h.Out, "Failed to format response message %d: %v\n", h.NumResponses, err)
 	} else {
-		fmt.Fprintln(h.Out, respStr)
+		fmt.Fprintf(h.Out, respStr)
 	}
 }
 

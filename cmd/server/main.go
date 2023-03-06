@@ -10,7 +10,7 @@ import (
 
 func main() {
 	// 监听本地端口
-	lis, err := net.Listen("tcp", ":8080")
+	lis, err := net.Listen("tcp", ":8081")
 	if err != nil {
 		fmt.Printf("监听端口失败: %s", err)
 		return

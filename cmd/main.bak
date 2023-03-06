@@ -306,7 +306,7 @@ func main() {
 		fail(nil, "Too few arguments.")
 	}
 	var target string
-	if args[0] != "list" && args[0] != "describe" && args[0] != "server" {
+	if args[0] != "list" && args[0] != "describe" {
 		target = args[0]
 		args = args[1:]
 	}
@@ -314,18 +314,13 @@ func main() {
 	if len(args) == 0 {
 		fail(nil, "Too few arguments.")
 	}
-	var list, describe, invoke, server bool
+	var list, describe, invoke bool
 	if args[0] == "list" {
 		list = true
 		args = args[1:]
 	} else if args[0] == "describe" {
 		describe = true
 		args = args[1:]
-	} else if args[0] == "server" {
-		server = true
-		args = args[1:]
-		info("gateway started")
-		Server(args)
 	} else {
 		invoke = true
 	}
@@ -449,9 +444,9 @@ func main() {
 			opts = append(opts, grpc.WithAuthority(*authority))
 		}
 
-		grpcurlUA := "http-to-grpc-gateway/" + version
+		grpcurlUA := "grpcurl/" + version
 		if version == noVersion {
-			grpcurlUA = "http-to-grpc-gateway/dev-build (no version set)"
+			grpcurlUA = "grpcurl/dev-build (no version set)"
 		}
 		if *userAgent != "" {
 			grpcurlUA = *userAgent + " " + grpcurlUA
@@ -678,65 +673,6 @@ func main() {
 			fail(err, "Failed to write protoset to %s", *protosetOut)
 		}
 
-	} else if server {
-		// Invoke an RPC
-		if cc == nil {
-			cc = dial()
-		}
-		var in io.Reader
-		if *data == "@" {
-			in = os.Stdin
-		} else {
-			in = strings.NewReader(*data)
-		}
-
-		// if not verbose output, then also include record delimiters
-		// between each message, so output could potentially be piped
-		// to another grpcurl process
-		includeSeparators := verbosityLevel == 0
-		options := grpcurl.FormatOptions{
-			EmitJSONDefaultFields: *emitDefaults,
-			IncludeTextSeparator:  includeSeparators,
-			AllowUnknownFields:    *allowUnknownFields,
-		}
-		rf, formatter, err := grpcurl.RequestParserAndFormatter(grpcurl.Format(*format), descSource, in, options)
-		if err != nil {
-			fail(err, "Failed to construct request parser and formatter for %q", *format)
-		}
-		h := &grpcurl.DefaultEventHandler{
-			Out:            os.Stdout,
-			Formatter:      formatter,
-			VerbosityLevel: verbosityLevel,
-		}
-
-		err = grpcurl.InvokeRPC(ctx, descSource, cc, symbol, append(addlHeaders, rpcHeaders...), h, rf.Next)
-		if err != nil {
-			if errStatus, ok := status.FromError(err); ok && *formatError {
-				h.Status = errStatus
-			} else {
-				fail(err, "Error invoking method %q", symbol)
-			}
-		}
-		reqSuffix := ""
-		respSuffix := ""
-		reqCount := rf.NumRequests()
-		if reqCount != 1 {
-			reqSuffix = "s"
-		}
-		if h.NumResponses != 1 {
-			respSuffix = "s"
-		}
-		if verbosityLevel > 0 {
-			fmt.Printf("Sent %d request%s and received %d response%s\n", reqCount, reqSuffix, h.NumResponses, respSuffix)
-		}
-		if h.Status.Code() != codes.OK {
-			if *formatError {
-				printFormattedStatus(os.Stderr, h.Status, formatter)
-			} else {
-				grpcurl.PrintStatus(os.Stderr, h.Status, formatter)
-			}
-			exit(statusCodeOffset + int(h.Status.Code()))
-		}
 	} else {
 		// Invoke an RPC
 		if cc == nil {
@@ -847,11 +783,6 @@ func prettify(docString string) string {
 	}
 
 	return strings.Join(parts[:j], "\n"+indent())
-}
-
-func info(msg string, args ...interface{}) {
-	msg = fmt.Sprintf("Info: %s\n", msg)
-	fmt.Fprintf(os.Stdout, msg, args...)
 }
 
 func warn(msg string, args ...interface{}) {
