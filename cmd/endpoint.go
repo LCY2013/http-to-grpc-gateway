@@ -6,17 +6,17 @@ import (
 	"github.com/jhump/protoreflect/grpcreflect"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/metadata"
 	reflectpb "google.golang.org/grpc/reflection/grpc_reflection_v1alpha"
 	grpcurl "http-to-grpc-gateway"
+	"http-to-grpc-gateway/internal/ack"
+	"http-to-grpc-gateway/internal/logger"
 	"http-to-grpc-gateway/internal/registry"
 	httpReg "http-to-grpc-gateway/internal/registry/http"
 	"http-to-grpc-gateway/internal/util/async"
 	"log"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 )
@@ -65,19 +65,20 @@ func registerWithServe(registryType string) http.HandlerFunc {
 		case <-time.After(30 * time.Second):
 			// 如果两秒后接受到了一个消息后，意味请求已经处理完成
 			// 我们写入"request processed"作为响应
-			_, err := writer.Write([]byte("request timeout"))
+			_, err := writer.Write([]byte(ack.ToFailResponse("request timeout")))
 			if err != nil {
 				return
 			}
 		case res := <-ctx.Done():
 			// 如果处理完成前取消了，在STDERR中记录请求被取消的消息
-			_, err := fmt.Fprintf(os.Stderr, "request cancelled: %s\n", res)
+			logger.Errorf("request cancelled: %s\n", res)
+			_, err := writer.Write([]byte(ack.ToFailResponse("request cancelled")))
 			if err != nil {
 				return
 			}
 		case err := <-done:
 			if err != nil {
-				_, err = writer.Write([]byte(err.Error()))
+				_, err = writer.Write([]byte(ack.ToFailResponse(err.Error())))
 			}
 		}
 	}
@@ -105,44 +106,6 @@ func dial(ctx context.Context, register registry.Register) (*grpc.ClientConn, er
 		opts = append(opts, grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(*maxMsgSz)))
 	}
 
-	var creds credentials.TransportCredentials
-	if !*plaintext {
-		tlsConf, err := grpcurl.ClientTLSConfig(*insecure, *cacert, *cert, *key)
-		if err != nil {
-			fail(err, "Failed to create TLS config")
-		}
-
-		sslKeylogFile := os.Getenv("SSLKEYLOGFILE")
-		if sslKeylogFile != "" {
-			w, err := os.OpenFile(sslKeylogFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0600)
-			if err != nil {
-				fail(err, "Could not open SSLKEYLOGFILE %s", sslKeylogFile)
-			}
-			tlsConf.KeyLogWriter = w
-		}
-
-		creds = credentials.NewTLS(tlsConf)
-
-		// can use either -servername or -authority; but not both
-		if *serverName != "" && *authority != "" {
-			if *serverName == *authority {
-				warn("Both -servername and -authority are present; prefer only -authority.")
-			} else {
-				fail(nil, "Cannot specify different values for -servername and -authority.")
-			}
-		}
-		overrideName := *serverName
-		if overrideName == "" {
-			overrideName = *authority
-		}
-
-		if overrideName != "" {
-			opts = append(opts, grpc.WithAuthority(overrideName))
-		}
-	} else if *authority != "" {
-		opts = append(opts, grpc.WithAuthority(*authority))
-	}
-
 	UA := "http-to-grpc-gateway/" + version
 	if version == noVersion {
 		UA = "http-to-grpc-gateway/dev-build (no version set)"
@@ -159,15 +122,13 @@ func dial(ctx context.Context, register registry.Register) (*grpc.ClientConn, er
 
 	registry, err := register.Register()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to get register %+v: %+v", register, err)
+		logger.Errorf("Failed to get register %+v: %+v", register, err)
 		return nil, err
 	}
 
-	creds = nil
-
-	cc, err := grpcurl.BlockingDial(ctx, network, registry.Addr, creds, opts...)
+	cc, err := grpcurl.BlockingDial(ctx, network, registry.Addr, nil, opts...)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to dial target host %q: %+v", registry.Addr, err)
+		logger.Errorf("Failed to dial target host %q: %+v", registry.Addr, err)
 		return nil, err
 	}
 	return cc, nil
@@ -194,15 +155,17 @@ func invoke(ctx context.Context, req *http.Request, writer http.ResponseWriter, 
 		var err error
 		fileSource, err = grpcurl.DescriptorSourceFromProtoSets(protoset...)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "%+v Failed to process proto descriptor sets.", err)
-			return err
+			logger.Errorf("%+v Failed to process proto descriptor sets.", err)
+			fmt.Fprintf(writer, ack.ToFailResponse(err.Error()))
+			return nil
 		}
 	} else if len(protoFiles) > 0 {
 		var err error
 		fileSource, err = grpcurl.DescriptorSourceFromProtoFiles(importPaths, protoFiles...)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "%+v Failed to process proto source files.", err)
-			return err
+			logger.Errorf("%+v Failed to process proto source files.", err)
+			fmt.Fprintf(writer, ack.ToFailResponse(err.Error()))
+			return nil
 		}
 	}
 	if reflection.val {
@@ -244,8 +207,9 @@ func invoke(ctx context.Context, req *http.Request, writer http.ResponseWriter, 
 
 	rf, formatter, err := grpcurl.RequestParserAndFormatter(grpcurl.Format(*format), descSource, req.Body, options)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%+v Failed to construct request parser and formatter for %q", err, *format)
-		return err
+		logger.Errorf("%+v Failed to construct request parser and formatter for %q", err, *format)
+		fmt.Fprintf(writer, ack.ToFailResponse(err.Error()))
+		return nil
 	}
 	h := &grpcurl.DefaultEventHandler{
 		Out:            writer,
@@ -278,9 +242,9 @@ func invoke(ctx context.Context, req *http.Request, writer http.ResponseWriter, 
 
 	err = grpcurl.InvokeRPC(ctx, descSource, cc, registry.Method, rpcHeader, h, rf.Next)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%+v Error invoking method %q", err, registry.Method)
-		fmt.Fprintf(writer, "")
-		return err
+		logger.Errorf("%+v Error invoking method %q", err, registry.Method)
+		fmt.Fprintf(writer, ack.ToFailResponse(err.Error()))
+		return nil
 	}
 	reqSuffix := ""
 	respSuffix := ""
@@ -292,7 +256,7 @@ func invoke(ctx context.Context, req *http.Request, writer http.ResponseWriter, 
 		respSuffix = "s"
 	}
 	if verbosityLevel > 0 {
-		fmt.Printf("Sent %d request%s and received %d response%s\n", reqCount, reqSuffix, h.NumResponses, respSuffix)
+		logger.Infof("Sent %d request%s and received %d response%s\n", reqCount, reqSuffix, h.NumResponses, respSuffix)
 	}
 	if h.Status.Code() != codes.OK {
 		if *formatError {

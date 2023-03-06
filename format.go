@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"http-to-grpc-gateway/internal/ack"
 	"io"
 	"reflect"
 	"strings"
@@ -488,7 +489,7 @@ func (h *DefaultEventHandler) OnReceiveResponse(resp proto.Message) {
 	if respStr, err := h.Formatter(resp); err != nil {
 		fmt.Fprintf(h.Out, "Failed to format response message %d: %v\n", h.NumResponses, err)
 	} else {
-		fmt.Fprintf(h.Out, respStr)
+		fmt.Fprintf(h.Out, ack.ToSuccessResponse(respStr))
 	}
 }
 

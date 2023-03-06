@@ -6,8 +6,10 @@ require (
 	github.com/fullstorydev/grpcurl v1.8.7
 	github.com/golang/protobuf v1.5.2
 	github.com/jhump/protoreflect v1.15.0
+	go.uber.org/zap v1.24.0
 	google.golang.org/grpc v1.53.0
 	google.golang.org/protobuf v1.28.2-0.20220831092852-f930b1dc76e8
+	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 )
 
 require (
@@ -20,6 +22,8 @@ require (
 	github.com/cncf/xds/go v0.0.0-20230105202645-06c439db220b // indirect
 	github.com/envoyproxy/go-control-plane v0.10.3 // indirect
 	github.com/envoyproxy/protoc-gen-validate v0.9.1 // indirect
+	go.uber.org/atomic v1.7.0 // indirect
+	go.uber.org/multierr v1.6.0 // indirect
 	golang.org/x/net v0.7.0 // indirect
 	golang.org/x/oauth2 v0.4.0 // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
