@@ -1,4 +1,4 @@
-package grpcurl_test
+package gateway_test
 
 import (
 	"context"

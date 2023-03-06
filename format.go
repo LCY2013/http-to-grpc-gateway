@@ -1,4 +1,4 @@
-package grpcurl
+package gateway
 
 import (
 	"bufio"
