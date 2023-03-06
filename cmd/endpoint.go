@@ -3,18 +3,18 @@ package main
 import (
 	"context"
 	"fmt"
+	grpcurl "github.com/LCY2013/http-to-grpc-gateway"
+	"github.com/LCY2013/http-to-grpc-gateway/internal/ack"
+	"github.com/LCY2013/http-to-grpc-gateway/internal/logger"
+	"github.com/LCY2013/http-to-grpc-gateway/internal/registry"
+	httpReg "github.com/LCY2013/http-to-grpc-gateway/internal/registry/http"
+	"github.com/LCY2013/http-to-grpc-gateway/internal/util/async"
 	"github.com/jhump/protoreflect/grpcreflect"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/metadata"
 	reflectpb "google.golang.org/grpc/reflection/grpc_reflection_v1alpha"
-	grpcurl "http-to-grpc-gateway"
-	"http-to-grpc-gateway/internal/ack"
-	"http-to-grpc-gateway/internal/logger"
-	"http-to-grpc-gateway/internal/registry"
-	httpReg "http-to-grpc-gateway/internal/registry/http"
-	"http-to-grpc-gateway/internal/util/async"
 	"log"
 	"net/http"
 	"strings"
@@ -106,9 +106,9 @@ func dial(ctx context.Context, register registry.Register) (*grpc.ClientConn, er
 		opts = append(opts, grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(*maxMsgSz)))
 	}
 
-	UA := "http-to-grpc-gateway/" + version
+	UA := "github.com/LCY2013/http-to-grpc-gateway/" + version
 	if version == noVersion {
-		UA = "http-to-grpc-gateway/dev-build (no version set)"
+		UA = "github.com/LCY2013/http-to-grpc-gateway/dev-build (no version set)"
 	}
 	if *userAgent != "" {
 		UA = *userAgent + " " + UA

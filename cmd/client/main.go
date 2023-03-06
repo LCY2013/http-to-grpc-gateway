@@ -3,9 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/LCY2013/http-to-grpc-gateway/proto/helloworld"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"http-to-grpc-gateway/proto/helloworld"
 )
 
 func main() {

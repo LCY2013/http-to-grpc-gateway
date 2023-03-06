@@ -2,7 +2,7 @@ package http
 
 import (
 	"errors"
-	"http-to-grpc-gateway/internal/registry"
+	"github.com/LCY2013/http-to-grpc-gateway/internal/registry"
 	"net/http"
 	"strings"
 )

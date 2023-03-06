@@ -6,7 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"http-to-grpc-gateway/internal/ack"
+	"github.com/LCY2013/http-to-grpc-gateway/internal/ack"
 	"io"
 	"reflect"
 	"strings"

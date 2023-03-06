@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
+	"github.com/LCY2013/http-to-grpc-gateway/proto/helloworld"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
-	"http-to-grpc-gateway/proto/helloworld"
 	"net"
 )
 
