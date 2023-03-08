@@ -351,9 +351,10 @@ func readInConfig() error {
 	if err != nil {            // Handle errors reading the config file
 		return err
 	}
-	conf = &Config{}
 
 	viper.WatchConfig()
+
+	conf = &Config{}
 
 	return viper.Unmarshal(conf, func(c *mapstructure.DecoderConfig) {
 		c.TagName = "json"
