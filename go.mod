@@ -3,7 +3,6 @@ module github.com/LCY2013/http-to-grpc-gateway
 go 1.20
 
 require (
-	github.com/fullstorydev/grpcurl v1.8.7
 	github.com/golang/protobuf v1.5.2
 	github.com/jhump/protoreflect v1.15.0
 	go.uber.org/zap v1.24.0

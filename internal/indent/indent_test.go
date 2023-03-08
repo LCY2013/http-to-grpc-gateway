@@ -1,8 +1,9 @@
-package main
+package indent
 
 import (
 	"bytes"
 	"flag"
+	"github.com/LCY2013/http-to-grpc-gateway/internal/config"
 	"testing"
 )
 
@@ -16,12 +17,12 @@ func TestFlagDocIndent(t *testing.T) {
 	var buf bytes.Buffer
 	fs.SetOutput(&buf)
 
-	fs.String("foo", "", prettify(`
+	fs.String("foo", "", config.Prettify(`
 		This is a flag doc string.
 		It has multiple lines.
 		More than two, actually.`))
-	fs.Int("bar", 100, prettify(`This is a simple flag doc string.`))
-	fs.Bool("baz", false, prettify(`
+	fs.Int("bar", 100, config.Prettify(`This is a simple flag doc string.`))
+	fs.Bool("baz", false, config.Prettify(`
 		This is another long doc string.
 		It also has multiple lines. But not as long as the first one.`))
 

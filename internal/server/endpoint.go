@@ -1,10 +1,11 @@
-package main
+package server
 
 import (
 	"context"
 	"fmt"
-	grpcurl "github.com/LCY2013/http-to-grpc-gateway"
+	grpcgateway "github.com/LCY2013/http-to-grpc-gateway"
 	"github.com/LCY2013/http-to-grpc-gateway/internal/ack"
+	"github.com/LCY2013/http-to-grpc-gateway/internal/config"
 	"github.com/LCY2013/http-to-grpc-gateway/internal/logger"
 	"github.com/LCY2013/http-to-grpc-gateway/internal/registry"
 	httpReg "github.com/LCY2013/http-to-grpc-gateway/internal/registry/http"
@@ -15,17 +16,17 @@ import (
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/metadata"
 	reflectpb "google.golang.org/grpc/reflection/grpc_reflection_v1alpha"
-	"log"
 	"net/http"
 	"strings"
 	"time"
 )
 
-func Server(args []string) {
+func Run(args []string) {
+	logger.Info("gateway started...")
 	// 创建一个监听8080端口的服务器
 	err := http.ListenAndServe(":8080", registerWithServe(args[0]))
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal(err)
 		return
 	}
 }
@@ -86,37 +87,37 @@ func registerWithServe(registryType string) http.HandlerFunc {
 
 func dial(ctx context.Context, register registry.Register) (*grpc.ClientConn, error) {
 	dialTime := 10 * time.Second
-	if *connectTimeout > 0 {
-		dialTime = time.Duration(*connectTimeout * float64(time.Second))
+	if *config.ConnectTimeout > 0 {
+		dialTime = time.Duration(*config.ConnectTimeout * float64(time.Second))
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, dialTime)
 	defer cancel()
 
 	var opts []grpc.DialOption
-	if *keepaliveTime > 0 {
-		timeout := time.Duration(*keepaliveTime * float64(time.Second))
+	if *config.KeepaliveTime > 0 {
+		timeout := time.Duration(*config.KeepaliveTime * float64(time.Second))
 		opts = append(opts, grpc.WithKeepaliveParams(keepalive.ClientParameters{
 			Time:    timeout,
 			Timeout: timeout,
 		}))
 	}
 
-	if *maxMsgSz > 0 {
-		opts = append(opts, grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(*maxMsgSz)))
+	if *config.MaxMsgSz > 0 {
+		opts = append(opts, grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(*config.MaxMsgSz)))
 	}
 
-	UA := "github.com/LCY2013/http-to-grpc-gateway/" + version
-	if version == noVersion {
+	UA := "github.com/LCY2013/http-to-grpc-gateway/" + config.Version
+	if config.Version == config.NoVersion {
 		UA = "github.com/LCY2013/http-to-grpc-gateway/dev-build (no version set)"
 	}
-	if *userAgent != "" {
-		UA = *userAgent + " " + UA
+	if *config.UserAgent != "" {
+		UA = *config.UserAgent + " " + UA
 	}
 	opts = append(opts, grpc.WithUserAgent(UA))
 
 	network := "tcp"
-	if isUnixSocket != nil && isUnixSocket() {
+	if config.IsUnixSocket != nil && config.IsUnixSocket() {
 		network = "unix"
 	}
 
@@ -126,7 +127,7 @@ func dial(ctx context.Context, register registry.Register) (*grpc.ClientConn, er
 		return nil, err
 	}
 
-	cc, err := grpcurl.BlockingDial(ctx, network, registry.Addr, nil, opts...)
+	cc, err := grpcgateway.BlockingDial(ctx, network, registry.Addr, nil, opts...)
 	if err != nil {
 		logger.Errorf("Failed to dial target host %q: %+v", registry.Addr, err)
 		return nil, err
@@ -141,40 +142,40 @@ func invoke(ctx context.Context, req *http.Request, writer http.ResponseWriter, 
 	}
 
 	verbosityLevel := 0
-	if *verbose {
+	if *config.Verbose {
 		verbosityLevel = 1
 	}
-	if *veryVerbose {
+	if *config.VeryVerbose {
 		verbosityLevel = 2
 	}
 
-	var descSource grpcurl.DescriptorSource
+	var descSource grpcgateway.DescriptorSource
 	var refClient *grpcreflect.Client
-	var fileSource grpcurl.DescriptorSource
-	if len(protoset) > 0 {
+	var fileSource grpcgateway.DescriptorSource
+	if len(config.Protoset) > 0 {
 		var err error
-		fileSource, err = grpcurl.DescriptorSourceFromProtoSets(protoset...)
+		fileSource, err = grpcgateway.DescriptorSourceFromProtoSets(config.Protoset...)
 		if err != nil {
 			logger.Errorf("%+v Failed to process proto descriptor sets.", err)
 			fmt.Fprintf(writer, ack.ToFailResponse(err.Error()))
 			return nil
 		}
-	} else if len(protoFiles) > 0 {
+	} else if len(config.ProtoFiles) > 0 {
 		var err error
-		fileSource, err = grpcurl.DescriptorSourceFromProtoFiles(importPaths, protoFiles...)
+		fileSource, err = grpcgateway.DescriptorSourceFromProtoFiles(config.ImportPaths, config.ProtoFiles...)
 		if err != nil {
 			logger.Errorf("%+v Failed to process proto source files.", err)
 			fmt.Fprintf(writer, ack.ToFailResponse(err.Error()))
 			return nil
 		}
 	}
-	if reflection.val {
-		md := grpcurl.MetadataFromHeaders(append(addlHeaders, reflHeaders...))
+	if config.Reflection.Val {
+		md := grpcgateway.MetadataFromHeaders(append(config.AddlHeaders, config.ReflHeaders...))
 		refCtx := metadata.NewOutgoingContext(ctx, md)
 		refClient = grpcreflect.NewClientV1Alpha(refCtx, reflectpb.NewServerReflectionClient(cc))
-		reflSource := grpcurl.DescriptorSourceFromServer(ctx, refClient)
+		reflSource := grpcgateway.DescriptorSourceFromServer(ctx, refClient)
 		if fileSource != nil {
-			descSource = compositeSource{reflSource, fileSource}
+			descSource = config.CompositeSource{Reflection: reflSource, File: fileSource}
 		} else {
 			descSource = reflSource
 		}
@@ -197,30 +198,30 @@ func invoke(ctx context.Context, req *http.Request, writer http.ResponseWriter, 
 
 	// if not verbose output, then also include record delimiters
 	// between each message, so output could potentially be piped
-	// to another grpcurl process
+	// to another grpcgateway process
 	includeSeparators := verbosityLevel == 0
-	options := grpcurl.FormatOptions{
-		EmitJSONDefaultFields: *emitDefaults,
+	options := grpcgateway.FormatOptions{
+		EmitJSONDefaultFields: *config.EmitDefaults,
 		IncludeTextSeparator:  includeSeparators,
-		AllowUnknownFields:    *allowUnknownFields,
+		AllowUnknownFields:    *config.AllowUnknownFields,
 	}
 
-	rf, formatter, err := grpcurl.RequestParserAndFormatter(grpcurl.Format(*format), descSource, req.Body, options)
+	rf, formatter, err := grpcgateway.RequestParserAndFormatter(grpcgateway.Format(*config.Format), descSource, req.Body, options)
 	if err != nil {
-		logger.Errorf("%+v Failed to construct request parser and formatter for %q", err, *format)
+		logger.Errorf("%+v Failed to construct request parser and formatter for %q", err, *config.Format)
 		fmt.Fprintf(writer, ack.ToFailResponse(err.Error()))
 		return nil
 	}
-	h := &grpcurl.DefaultEventHandler{
+	h := &grpcgateway.DefaultEventHandler{
 		Out:            writer,
 		Formatter:      formatter,
 		VerbosityLevel: verbosityLevel,
 	}
 
-	switch grpcurl.Format(*format) {
-	case grpcurl.FormatJSON:
+	switch grpcgateway.Format(*config.Format) {
+	case grpcgateway.FormatJSON:
 		writer.Header().Add("Content-Type", "application/json; charset=utf-8")
-	case grpcurl.FormatText:
+	case grpcgateway.FormatText:
 		writer.Header().Add("Content-Type", "text/plain; charset=utf-8")
 	default:
 		for k, v := range req.Header {
@@ -230,7 +231,7 @@ func invoke(ctx context.Context, req *http.Request, writer http.ResponseWriter, 
 		}
 	}
 
-	rpcHeader := append(addlHeaders, rpcHeaders...)
+	rpcHeader := append(config.AddlHeaders, config.RpcHeaders...)
 	for k, v := range req.Header {
 		if strings.ToTitle(k) != "X-" {
 			continue
@@ -240,7 +241,7 @@ func invoke(ctx context.Context, req *http.Request, writer http.ResponseWriter, 
 		}
 	}
 
-	err = grpcurl.InvokeRPC(ctx, descSource, cc, registry.Method, rpcHeader, h, rf.Next)
+	err = grpcgateway.InvokeRPC(ctx, descSource, cc, registry.Method, rpcHeader, h, rf.Next)
 	if err != nil {
 		logger.Errorf("%+v Error invoking method %q", err, registry.Method)
 		fmt.Fprintf(writer, ack.ToFailResponse(err.Error()))
@@ -259,10 +260,10 @@ func invoke(ctx context.Context, req *http.Request, writer http.ResponseWriter, 
 		logger.Infof("Sent %d request%s and received %d response%s\n", reqCount, reqSuffix, h.NumResponses, respSuffix)
 	}
 	if h.Status.Code() != codes.OK {
-		if *formatError {
-			grpcurl.PrintStatus(writer, h.Status, formatter)
+		if *config.FormatError {
+			grpcgateway.PrintStatus(writer, h.Status, formatter)
 		} else {
-			grpcurl.PrintStatus(writer, h.Status, formatter)
+			grpcgateway.PrintStatus(writer, h.Status, formatter)
 		}
 	}
 

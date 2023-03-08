@@ -17,8 +17,8 @@ import (
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
 
+	grpcurl "github.com/LCY2013/http-to-grpc-gateway"
 	grpcurl_testing "github.com/LCY2013/http-to-grpc-gateway/internal/testing"
-	"github.com/fullstorydev/grpcurl"
 )
 
 var (
@@ -96,11 +96,12 @@ func main() {
 	svr := grpc.NewServer(opts...)
 
 	grpcurl_testing.RegisterTestServiceServer(svr, grpcurl_testing.TestServer{})
+
 	if !*noreflect {
 		reflection.Register(svr)
 	}
 
-	if err := svr.Serve(l); err != nil {
+	if err = svr.Serve(l); err != nil {
 		fmt.Fprintf(os.Stderr, "GRPC server returned error: %v\n", err)
 		os.Exit(1)
 	}

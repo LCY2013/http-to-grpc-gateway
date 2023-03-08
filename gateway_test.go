@@ -26,7 +26,7 @@ import (
 	reflectpb "google.golang.org/grpc/reflection/grpc_reflection_v1alpha"
 	"google.golang.org/grpc/status"
 
-	. "github.com/fullstorydev/grpcurl"
+	. "github.com/LCY2013/http-to-grpc-gateway"
 )
 
 var (

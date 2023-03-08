@@ -5,7 +5,7 @@ package main
 
 var (
 	unix = flags.Bool("unix", false, prettify(`
-		Indicates that the server address is the path to a Unix domain socket.`))
+		Indicates that the run address is the path to a Unix domain socket.`))
 )
 
 func init() {
