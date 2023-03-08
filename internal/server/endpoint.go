@@ -9,6 +9,7 @@ import (
 	"github.com/LCY2013/http-to-grpc-gateway/internal/logger"
 	"github.com/LCY2013/http-to-grpc-gateway/internal/registry"
 	httpReg "github.com/LCY2013/http-to-grpc-gateway/internal/registry/http"
+	localReg "github.com/LCY2013/http-to-grpc-gateway/internal/registry/local"
 	"github.com/LCY2013/http-to-grpc-gateway/internal/util/async"
 	"github.com/jhump/protoreflect/grpcreflect"
 	"google.golang.org/grpc"
@@ -38,6 +39,8 @@ func registerWithServe(registryType string) http.HandlerFunc {
 		switch registryType {
 		case "http":
 			register = httpReg.NewRegisterHttp(request)
+		case "local":
+			register = localReg.NewRegisterLocal(request)
 		}
 
 		done := make(chan error)

@@ -1,0 +1,8 @@
+#{
+#  "helloworld.Greeter": "127.0.0.1:8081",
+#  "testing.TestService": "127.0.0.1:8082"
+#}
+local_registry:
+  registry:
+    - "testing.TestService": "127.0.0.1:8082"
+    - "helloworld.Greeter": "127.0.0.1:8081"

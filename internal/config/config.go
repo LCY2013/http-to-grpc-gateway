@@ -5,10 +5,15 @@ import (
 	"fmt"
 	gateway "github.com/LCY2013/http-to-grpc-gateway"
 	"github.com/LCY2013/http-to-grpc-gateway/internal/indent"
+	"github.com/LCY2013/http-to-grpc-gateway/internal/logger"
 	"github.com/jhump/protoreflect/desc"
+	"github.com/mitchellh/mapstructure"
+	"github.com/spf13/pflag"
+	"github.com/spf13/viper"
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 // StatusCodeOffset To avoid confusion between program error codes and the gRPC resonse
@@ -307,4 +312,76 @@ func (f *OptionalBoolFlag) Set(s string) error {
 
 func (f *OptionalBoolFlag) IsBoolFlag() bool {
 	return true
+}
+
+type Config struct {
+	LocalRegistry struct {
+		Registry map[string]string `json:"registry"`
+	} `json:"local_registry"`
+}
+
+var (
+	conf *Config
+	once sync.Once
+)
+
+// readInConfig 开始初始化整个配置
+func readInConfig() error {
+	var (
+		pwd string
+		err error
+	)
+	if err = viper.BindPFlags(pflag.CommandLine); err != nil {
+		return err
+	}
+	viper.SetConfigName(*pflag.String("config.name", "config", "config name"))        // name of config file (without extension)
+	viper.SetConfigType(*pflag.String("config.extension", "yml", "config extension")) // REQUIRED if the config file does not have the extension in the name
+	viper.AddConfigPath("/etc/http-grpc-gateway/")                                    // path to look for the config file in
+	viper.AddConfigPath("$HOME/.http-grpc-gateway")                                   // call multiple times to add many search paths
+	viper.AddConfigPath(".")                                                          // optionally look for config in the working directory
+	viper.AddConfigPath("./configs")                                                  // optionally look for config in the working directory
+	viper.AddConfigPath("../configs")                                                 // optionally look for config in the working directory
+	viper.AddConfigPath("../../configs")                                              // optionally look for config in the working directory
+	viper.AddConfigPath("../../../configs")                                           // optionally look for config in the working directory
+	if pwd, err = os.Getwd(); err == nil {
+		viper.AddConfigPath(pwd) // optionally look for config in the working directory
+	}
+
+	err = viper.ReadInConfig() // Find and read the config file
+	if err != nil {            // Handle errors reading the config file
+		return err
+	}
+	conf = &Config{}
+
+	viper.WatchConfig()
+
+	return viper.Unmarshal(conf, func(c *mapstructure.DecoderConfig) {
+		c.TagName = "json"
+	})
+}
+
+// Conf 直接获取conf
+func Conf() *Config {
+	if conf == nil {
+		once.Do(func() {
+			if err := readInConfig(); err != nil {
+				logger.Error(err)
+			}
+		})
+	}
+	return conf
+}
+
+func LocalRegistry() map[string]string {
+	config := Conf()
+	if config == nil {
+		return map[string]string{}
+	}
+
+	registry := config.LocalRegistry.Registry
+	if registry == nil {
+		return map[string]string{}
+	}
+
+	return config.LocalRegistry.Registry
 }

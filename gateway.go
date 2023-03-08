@@ -612,6 +612,7 @@ func BlockingDial(ctx context.Context, network, address string, creds credential
 	// grpc.Dial doesn't provide any information on permanent connection errors (like
 	// TLS handshake failures). So in order to provide good error messages, we need a
 	// custom dialer that can provide that info. That means we manage the TLS handshake.
+	// TODO 这里可以使用配置使用的最大
 	result := make(chan interface{}, 1)
 
 	writeResult := func(res interface{}) {
