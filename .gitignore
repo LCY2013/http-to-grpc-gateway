@@ -122,3 +122,5 @@ fabric.properties
 tempdata
 
 *.log
+
+logs

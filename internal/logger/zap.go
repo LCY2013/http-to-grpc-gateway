@@ -1,9 +1,13 @@
 package logger
 
 import (
+	"fmt"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"gopkg.in/natefinch/lumberjack.v2"
+	"io"
+	"os"
+	"time"
 )
 
 var (
@@ -12,27 +16,67 @@ var (
 
 func init() {
 	// 日志文件名称
-	fileName := "gateway.log"
-	syncWriter := zapcore.AddSync(
+	fileName := "gateway"
+
+	/*syncWriter := zapcore.AddSync(
 		&lumberjack.Logger{
-			Filename: fileName, // 文件名称
-			MaxSize:  521,      // MB
-			//MaxAge: 7, // date
-			MaxBackups: 0, // 最大备份
+			Filename:   fileName, // 文件名称
+			MaxSize:    521,      // MB
+			MaxAge:     7,        // date
+			MaxBackups: 0,        // 最大备份
 			LocalTime:  true,
 			Compress:   true, // 是否启用压缩
 		},
-	)
+	)*/
 	// 编码
-	encoder := zap.NewProductionEncoderConfig()
+	fileEncoder := zap.NewProductionEncoderConfig()
 	// 时间格式
-	encoder.EncodeTime = zapcore.ISO8601TimeEncoder
+	fileEncoder.EncodeTime = zapcore.ISO8601TimeEncoder
 
-	core := zapcore.NewCore(
-		// 编码器
-		zapcore.NewJSONEncoder(encoder),
-		syncWriter,
-		zap.NewAtomicLevelAt(zap.DebugLevel),
+	// 设置一些基本日志格式 具体含义还比较好理解，直接看zap源码也不难懂
+	consulEncoder := zapcore.NewConsoleEncoder(zapcore.EncoderConfig{
+		MessageKey:  "msg",
+		LevelKey:    "level",
+		EncodeLevel: zapcore.CapitalLevelEncoder,
+		TimeKey:     "ts",
+		EncodeTime: func(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
+			enc.AppendString(t.Format("2006-01-02 15:04:05"))
+		},
+		CallerKey:    "file",
+		EncodeCaller: zapcore.ShortCallerEncoder,
+		EncodeDuration: func(d time.Duration, enc zapcore.PrimitiveArrayEncoder) {
+			enc.AppendInt64(int64(d) / 1000000)
+		},
+	})
+
+	// 实现两个判断日志等级的interface
+	infoLevel := zap.LevelEnablerFunc(func(lvl zapcore.Level) bool {
+		return lvl >= zapcore.InfoLevel
+	})
+
+	errorLevel := zap.LevelEnablerFunc(func(lvl zapcore.Level) bool {
+		return lvl >= zapcore.ErrorLevel
+	})
+
+	// 获取 info、error日志文件的io.Writer 抽象 getWriter() 在下方实现
+	infoWriter := getWriter(fmt.Sprintf("./logs/%s-info.log", fileName))
+	errorWriter := getWriter(fmt.Sprintf("./logs/%s-error.log", fileName))
+
+	core := zapcore.NewTee(
+		zapcore.NewCore(
+			consulEncoder,
+			zapcore.AddSync(os.Stdout),
+			zapcore.DebugLevel), //打印到控制台
+		zapcore.NewCore(
+			// 编码器
+			zapcore.NewJSONEncoder(fileEncoder),
+			zapcore.AddSync(infoWriter),
+			infoLevel),
+		zapcore.NewCore(
+			// 编码器
+			zapcore.NewJSONEncoder(fileEncoder),
+			zapcore.AddSync(errorWriter),
+			errorLevel),
 	)
 
 	log := zap.New(
@@ -42,6 +86,22 @@ func init() {
 	)
 
 	logger = log.Sugar()
+}
+
+func getWriter(filename string) io.Writer {
+	// 生成rotatelogs的Logger 实际生成的文件名 info.log.YYmmddHH
+	// info.log是指向最新日志的链接
+	// 保存7天内的日志，每1小时(整点)分割一次日志
+	return zapcore.AddSync(
+		&lumberjack.Logger{
+			Filename:   filename, // 文件名称
+			MaxSize:    521,      // MB
+			MaxAge:     7,        // date
+			MaxBackups: 0,        // 最大备份
+			LocalTime:  true,
+			Compress:   true, // 是否启用压缩
+		},
+	)
 }
 
 func Debug(args ...any) {

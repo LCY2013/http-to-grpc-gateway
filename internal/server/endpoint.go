@@ -45,19 +45,21 @@ func registerWithServe(registryType string) http.HandlerFunc {
 
 		done := make(chan error)
 
-		// do business
-		async.GO(func() {
-			conn, dialErr := dial(ctx, register)
-			if dialErr != nil {
-				err := dialErr
-				_, _ = writer.Write([]byte(err.Error()))
+		conn, err := dial(ctx, register)
+		if err != nil {
+			logger.Error(err)
+			_, err = writer.Write([]byte(ack.ToFailResponse("system error")))
+			if err != nil {
 				return
 			}
+		}
 
+		// do business
+		async.GO(func() {
 			r, dialErr := register.Register()
 			if dialErr != nil {
-				err := dialErr
-				_, _ = writer.Write([]byte(err.Error()))
+				err = dialErr
+				//_, _ = writer.Write([]byte(err.Error()))
 				return
 			}
 
@@ -66,21 +68,21 @@ func registerWithServe(registryType string) http.HandlerFunc {
 
 		// 通过select监听多个channel
 		select {
-		case <-time.After(30 * time.Second):
+		case <-time.After(3 * time.Second):
 			// 如果两秒后接受到了一个消息后，意味请求已经处理完成
 			// 我们写入"request processed"作为响应
-			_, err := writer.Write([]byte(ack.ToFailResponse("request timeout")))
+			_, err = writer.Write([]byte(ack.ToFailResponse("request timeout")))
 			if err != nil {
 				return
 			}
 		case res := <-ctx.Done():
 			// 如果处理完成前取消了，在STDERR中记录请求被取消的消息
 			logger.Errorf("request cancelled: %s\n", res)
-			_, err := writer.Write([]byte(ack.ToFailResponse("request cancelled")))
+			_, err = writer.Write([]byte(ack.ToFailResponse("request cancelled")))
 			if err != nil {
 				return
 			}
-		case err := <-done:
+		case err = <-done:
 			if err != nil {
 				_, err = writer.Write([]byte(ack.ToFailResponse(err.Error())))
 			}

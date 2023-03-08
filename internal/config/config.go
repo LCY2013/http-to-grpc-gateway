@@ -318,6 +318,9 @@ type Config struct {
 	LocalRegistry struct {
 		Registry map[string]string `json:"registry"`
 	} `json:"local_registry"`
+	Log struct {
+		Filename string `json:"filename"`
+	} `json:"log"`
 }
 
 var (
