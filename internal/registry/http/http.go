@@ -2,6 +2,7 @@ package http
 
 import (
 	"errors"
+	"fmt"
 	"github.com/LCY2013/http-to-grpc-gateway/internal/registry"
 	"net/http"
 	"strings"
@@ -24,11 +25,13 @@ func (hr registerHttp) Register() (*registry.Registry, error) {
 	}
 	headerMethod := hr.req.Header["Method"][0]
 
-	methodSplit := strings.Split(headerMethod, "/")
-	if len(methodSplit) != 2 {
-		return nil, errors.New("method need form is foo.bar/method")
+	headerService := ""
+
+	headerService, _ = parseSymbol(headerMethod)
+
+	if headerMethod == "" || headerService == "" {
+		return nil, fmt.Errorf("given method name %q is not in expected format: 'service/method' or 'service.method'", headerMethod)
 	}
-	headerService := methodSplit[0]
 
 	_, ok = hr.req.Header["Addr"]
 	if !ok {
@@ -41,4 +44,15 @@ func (hr registerHttp) Register() (*registry.Registry, error) {
 		Service: headerService,
 		Addr:    headerAddr,
 	}, nil
+}
+
+func parseSymbol(svcAndMethod string) (string, string) {
+	pos := strings.LastIndex(svcAndMethod, "/")
+	if pos < 0 {
+		pos = strings.LastIndex(svcAndMethod, ".")
+		if pos < 0 {
+			return "", ""
+		}
+	}
+	return svcAndMethod[:pos], svcAndMethod[pos+1:]
 }

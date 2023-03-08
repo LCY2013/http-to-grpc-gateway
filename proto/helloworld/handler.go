@@ -8,6 +8,9 @@ func (s HelloworldService) SayHello(ctx context.Context, request *HelloRequest) 
 	return &HelloReply{
 		Message:    "hello, " + request.Name,
 		Parameters: request.Parameters,
+		Array:      request.Array,
+		Body:       request.Body,
+		Bytes:      request.Bytes,
 	}, nil
 }
 

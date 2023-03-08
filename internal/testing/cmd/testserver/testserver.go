@@ -17,8 +17,8 @@ import (
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
 
-	grpcurl "github.com/LCY2013/http-to-grpc-gateway"
-	grpcurl_testing "github.com/LCY2013/http-to-grpc-gateway/internal/testing"
+	gateway "github.com/LCY2013/http-to-grpc-gateway"
+	gatewaytesting "github.com/LCY2013/http-to-grpc-gateway/internal/testing"
 )
 
 var (
@@ -67,7 +67,7 @@ func main() {
 
 	var opts []grpc.ServerOption
 	if *cert != "" {
-		creds, err := grpcurl.ServerTransportCredentials(*cacert, *cert, *key, *requirecert)
+		creds, err := gateway.ServerTransportCredentials(*cacert, *cert, *key, *requirecert)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to configure transport credentials: %v\n", err)
 			os.Exit(1)
@@ -95,7 +95,7 @@ func main() {
 
 	svr := grpc.NewServer(opts...)
 
-	grpcurl_testing.RegisterTestServiceServer(svr, grpcurl_testing.TestServer{})
+	gatewaytesting.RegisterTestServiceServer(svr, gatewaytesting.TestServer{})
 
 	if !*noreflect {
 		reflection.Register(svr)

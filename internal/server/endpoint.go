@@ -196,6 +196,21 @@ func invoke(ctx context.Context, req *http.Request, writer http.ResponseWriter, 
 	}
 	defer reset()
 
+	/*services, err := refClient.ListServices()
+	if err == nil {
+		for _, service := range services {
+			fmt.Printf("service: %v\n", service)
+			resolveService, err := refClient.ResolveService(service)
+			if err != nil {
+				continue
+			}
+			methods := resolveService.GetMethods()
+			for _, method := range methods {
+				fmt.Printf("method: %v\n", method.GetName())
+			}
+		}
+	}*/
+
 	// if not verbose output, then also include record delimiters
 	// between each message, so output could potentially be piped
 	// to another grpcgateway process

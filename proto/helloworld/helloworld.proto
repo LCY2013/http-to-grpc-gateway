@@ -10,10 +10,22 @@ service Greeter {
 message HelloRequest {
   string name = 1;
   map<string, string> parameters = 2;
+  Body body = 3;
+  repeated string array = 4;
+  repeated bytes bytes = 5;
+}
+
+message Body {
+  string name = 1;
+  int32 age = 2;
+  Body body = 3;
 }
 
 message HelloReply {
   string message = 1;
   map<string,string> parameters = 2;
+  Body body = 3;
+  repeated string array = 4;
+  repeated bytes bytes = 5;
 }
 

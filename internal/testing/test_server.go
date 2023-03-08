@@ -50,7 +50,9 @@ func (TestServer) UnaryCall(ctx context.Context, req *SimpleRequest) (*SimpleRes
 	}
 
 	return &SimpleResponse{
-		Payload: req.Payload,
+		Payload:    req.Payload,
+		Username:   "fufeng",
+		OauthScope: "1234567",
 	}, nil
 }
 
